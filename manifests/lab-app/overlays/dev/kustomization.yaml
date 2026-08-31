@@ -6,4 +6,4 @@ namespace: dev
 images:
 - name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/lab-app
   newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/lab-app
-  newTag: 9a63c9e
+  newTag: 387c32e
