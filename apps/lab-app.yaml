@@ -3,6 +3,12 @@ kind: Application
 metadata:
   name: lab-app
   namespace: argocd
+  annotations:
+    # Last. Its ExternalSecret needs the CRDs from external-secrets (-10) and the
+    # store from cluster-secret-store (-5); its Ingress needs the nginx
+    # IngressClass. Wave 0 is the default, stated here to make the ordering
+    # visible next to the two Applications it depends on.
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
   source:

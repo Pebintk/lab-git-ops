@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+  namespace: argocd
+  annotations:
+    # Same wave as external-secrets: independent of it, but both are platform
+    # pieces that lab-app depends on. lab-app's Ingress needs the nginx
+    # IngressClass to exist or it is admitted but never routed.
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes.github.io/ingress-nginx
+    chart: ingress-nginx
+    targetRevision: 4.14.5
+    helm:
+      values: |
+        controller:
+          # The one and only LoadBalancer in this cluster. Each additional
+          # type=LoadBalancer Service or GCE Ingress provisions its own billable
+          # forwarding rule (~$18/mo), so everything else routes through this.
+          service:
+            type: LoadBalancer
+            # Must be a *regional* address in the cluster's region. A mismatch
+            # leaves EXTERNAL-IP <pending> indefinitely with no obvious error.
+            loadBalancerIP: "136.115.250.216"
+          # One replica: the spot pool floors at a single node, and the chart's
+          # default anti-affinity would leave a second replica Pending forever.
+          replicaCount: 1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

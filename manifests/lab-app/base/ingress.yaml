@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lab-app
+spec:
+  ingressClassName: nginx
+  rules:
+    # nip.io is wildcard DNS: lab.1-2-3-4.nip.io resolves to 1.2.3.4, no
+    # registration and no zone to manage. The hostname is only stable because the
+    # address is reserved in lab-infra/bootstrap — an ephemeral LB address would
+    # change the hostname on every cluster rebuild.
+    - host: lab.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lab-app
+                port:
+                  number: 80

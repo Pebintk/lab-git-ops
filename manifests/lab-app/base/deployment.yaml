@@ -17,6 +17,16 @@ spec:
           image: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/lab-app
           ports:
             - containerPort: 8080
+          env:
+            # lab-app-secret is created by ESO from Secret Manager, not by Git.
+            # The pod does not start until it exists, so on a fresh cluster this
+            # container waits in CreateContainerConfigError until the
+            # ExternalSecret first syncs — that is expected, not a failure.
+            - name: GREETING
+              valueFrom:
+                secretKeyRef:
+                  name: lab-app-secret
+                  key: greeting
           livenessProbe:
             httpGet:
               path: /healthz
