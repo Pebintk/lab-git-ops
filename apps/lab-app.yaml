@@ -16,7 +16,7 @@ spec:
     targetRevision: main
     path: manifests/lab-app/overlays/dev
   destination:
-    server: https://kubernetes.default.svc
+    server: https://104.154.159.76 
     namespace: dev
   syncPolicy:
     automated:

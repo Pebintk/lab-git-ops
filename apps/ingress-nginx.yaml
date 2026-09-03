@@ -29,7 +29,7 @@ spec:
           # default anti-affinity would leave a second replica Pending forever.
           replicaCount: 1
   destination:
-    server: https://kubernetes.default.svc
+    server: https://104.154.159.76
     namespace: ingress-nginx
   syncPolicy:
     automated:
