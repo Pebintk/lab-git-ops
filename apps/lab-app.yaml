@@ -16,7 +16,7 @@ spec:
     targetRevision: main
     path: manifests/lab-app/overlays/dev
   destination:
-    server: https://104.154.159.76 
+    server: https://136.64.202.103
     namespace: dev
   syncPolicy:
     automated:
