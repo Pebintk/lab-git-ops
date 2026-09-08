@@ -13,7 +13,7 @@ spec:
   source:
     repoURL: https://github.com/Pebintk/lab-git-ops.git
     targetRevision: main
-    path: manifests/monitoring/victoria-metrics
+    path: manifests/monitoring/victoria-metrics/overlays/dev
   destination:
     server: https://34.46.105.136      # ← verify against `argocd cluster list`
     namespace: monitoring
