@@ -1,0 +1,19 @@
+# pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vmsingle-data
+  namespace: monitoring
+  annotations:
+    # PVCs are exempted from prune deliberately. Removing this manifest from
+    # Git would otherwise delete the PVC, and the StorageClass reclaimPolicy
+    # is Delete — so the disk and all metrics history would go with it,
+    # silently.
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard-rwo

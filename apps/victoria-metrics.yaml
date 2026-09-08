@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: victoria-metrics
+  namespace: argocd
+  annotations:
+    # Wave -10 alongside the other platform pieces. Nothing depends on it yet,
+    # but vmagent, kube-state-metrics and Grafana will, and they should sync
+    # after the storage backend exists.
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Pebintk/lab-git-ops.git
+    targetRevision: main
+    path: manifests/monitoring/victoria-metrics
+  destination:
+    server: https://34.46.105.136      # ← verify against `argocd cluster list`
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,40 @@
+# vmsingle.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vmsingle
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate. The PVC is ReadWriteOnce — one node at a
+    # time — so a rolling update would start the new pod before releasing the
+    # disk from the old one, and it would hang in ContainerCreating forever.
+    # Same shape as a maxSurge deadlock: an overlap the environment can't
+    # accommodate.
+    type: Recreate
+  selector:
+    matchLabels: { app: vmsingle }
+  template:
+    metadata:
+      labels: { app: vmsingle }
+    spec:
+      containers:
+        - name: vmsingle
+          image: victoriametrics/victoria-metrics:v1.109.1
+          args:
+            - -storageDataPath=/storage
+            - -retentionPeriod=30d
+            - -httpListenAddr=:8428
+          ports:
+            - containerPort: 8428
+          volumeMounts:
+            - name: data
+              mountPath: /storage
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 1Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vmsingle-data
