@@ -8,3 +8,5 @@ resources:
   - rbac.yaml
   - scrape-config.yaml
   - vmagent.yaml
+  - ksm.yaml
+  - ksm-rbac.yaml
