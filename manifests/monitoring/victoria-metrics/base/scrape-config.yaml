@@ -58,13 +58,14 @@ data:
 
           # Discovery emits one target per container port, so a pod with several
           # ports produces several targets that the rewrite below would collapse
-          # into duplicates. Keep only the one whose container port already
-          # equals the annotation. The ";\1" backreference matches when the two
-          # captured values are equal.
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port,
-                            __meta_kubernetes_pod_container_port_number]
-            action: keep
-            regex: (\d+);\1
+          # into duplicates. Keep only the one whose container port equals the
+          # annotation. A backreference regex (\d+);\1 cannot express this: the
+          # scrape engine uses RE2, which has no backreferences, so vmagent
+          # skips the whole job. keepequal compares the two labels directly:
+          # keep the target when container_port_number == annotation port.
+          - action: keepequal
+            source_labels: [__meta_kubernetes_pod_container_port_number]
+            target_label: __meta_kubernetes_pod_annotation_prometheus_io_port
 
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
             action: replace
