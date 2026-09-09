@@ -48,6 +48,7 @@ data:
 
       # ── Pods that opt in via annotation ────────────────────────────────
       - job_name: kubernetes-pods
+        honor_labels: true
         kubernetes_sd_configs:
           - role: pod
         relabel_configs:
