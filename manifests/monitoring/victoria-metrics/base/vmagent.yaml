@@ -16,6 +16,11 @@ spec:
           image: victoriametrics/vmagent:v1.109.1
           args:
             - -promscrape.config=/config/scrape.yml
+            # Watch the mounted config and hot-reload on change. Without this,
+            # vmagent reads scrape.yml once at start; a corrected ConfigMap
+            # (ArgoCD sync) does not take effect until the pod restarts, so a
+            # config fix silently does nothing on the running pod.
+            - -promscrape.configCheckInterval=30s
             - -remoteWrite.url=http://vmsingle:8428/api/v1/write
             - -httpListenAddr=:8429
           ports:
