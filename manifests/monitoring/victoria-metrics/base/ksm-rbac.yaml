@@ -10,9 +10,19 @@ metadata:
 rules:
   - apiGroups: [""]
     resources:
-      - configmaps, secrets, nodes, pods, services, serviceaccounts
-      - resourcequotas, replicationcontrollers, limitranges
-      - persistentvolumeclaims, persistentvolumes, namespaces, endpoints
+      - configmaps
+      - secrets
+      - nodes
+      - pods
+      - services
+      - serviceaccounts
+      - resourcequotas
+      - replicationcontrollers
+      - limitranges
+      - persistentvolumeclaims
+      - persistentvolumes
+      - namespaces
+      - endpoints
     verbs: [list, watch]
   - apiGroups: ["apps"]
     resources: [statefulsets, daemonsets, deployments, replicasets]

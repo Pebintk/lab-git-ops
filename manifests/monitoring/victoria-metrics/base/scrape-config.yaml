@@ -51,23 +51,31 @@ data:
         kubernetes_sd_configs:
           - role: pod
         relabel_configs:
-          # Only scrape pods annotated prometheus.io/scrape: "true".
-          # `keep` drops every target that doesn't match.
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
             regex: "true"
-          # Optional path override, default /metrics
+
+          # Discovery emits one target per container port, so a pod with several
+          # ports produces several targets that the rewrite below would collapse
+          # into duplicates. Keep only the one whose container port already
+          # equals the annotation. The ";\1" backreference matches when the two
+          # captured values are equal.
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port,
+                            __meta_kubernetes_pod_container_port_number]
+            action: keep
+            regex: (\d+);\1
+
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
             action: replace
             target_label: __metrics_path__
             regex: (.+)
-          # Optional port override: rewrite IP:oldport to IP:newport
+
           - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
             action: replace
             regex: ([^:]+)(?::\d+)?;(\d+)
             replacement: $1:$2
             target_label: __address__
-          # Carry namespace and pod name through as real labels.
+
           - source_labels: [__meta_kubernetes_namespace]
             target_label: namespace
           - source_labels: [__meta_kubernetes_pod_name]
