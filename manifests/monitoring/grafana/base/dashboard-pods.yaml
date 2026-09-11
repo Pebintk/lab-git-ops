@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-pods
+  labels:
+    grafana_dashboard: "1"
+data:
+  pod-detail.json: |
+    {
+      "uid": "lab-pod-detail",
+      "title": "Lab / Pod Detail",
+      "tags": ["lab", "pods"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-6h", "to": "now"},
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "type": "query",
+            "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+            "query": "label_values(kube_pod_info, namespace)",
+            "refresh": 2,
+            "includeAll": true,
+            "multi": true,
+            "current": {"text": "All", "value": "$__all"}
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "timeseries", "title": "CPU per Pod (cores)",
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "none"}},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", container!=\"\"}[5m]))", "legendFormat": "{{pod}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Memory Working Set per Pod",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "bytes"}},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", container!=\"\"})", "legendFormat": "{{pod}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Memory vs Request per Pod",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 10},
+          "fieldConfig": {"defaults": {"unit": "bytes"}},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [
+            {"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", container!=\"\"})", "legendFormat": "used {{pod}}"},
+            {"refId": "B", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum by (pod) (kube_pod_container_resource_requests{namespace=~\"$namespace\", resource=\"memory\"})", "legendFormat": "request {{pod}}"}
+          ]
+        }
+      ]
+    }

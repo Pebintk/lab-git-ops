@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cluster
+  labels:
+    # Mounted into /var/lib/grafana/dashboards by the Deployment. Kept as its
+    # own ConfigMap because dashboard JSON is large and one ConfigMap caps at
+    # 1MB. Every query here is verified against metrics actually stored
+    # (cAdvisor + kube-state-metrics). No node_* — node-exporter is not deployed.
+    grafana_dashboard: "1"
+data:
+  cluster-overview.json: |
+    {
+      "uid": "lab-cluster-overview",
+      "title": "Lab / Cluster Overview",
+      "tags": ["lab", "cluster"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-6h", "to": "now"},
+      "templating": {"list": []},
+      "panels": [
+        {
+          "type": "stat", "title": "Nodes",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "count(kube_node_info)"}]
+        },
+        {
+          "type": "stat", "title": "Pods (Running)",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum(kube_pod_status_phase{phase=\"Running\"})"}]
+        },
+        {
+          "type": "gauge", "title": "Cluster Memory Used vs Allocatable",
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) / sum(kube_node_status_allocatable{resource=\"memory\"})"}]
+        },
+        {
+          "type": "gauge", "title": "Cluster CPU Used vs Allocatable",
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) / sum(kube_node_status_allocatable{resource=\"cpu\"})"}]
+        },
+        {
+          "type": "timeseries", "title": "Pods by Phase",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum by (phase) (kube_pod_status_phase)", "legendFormat": "{{phase}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Pods by Namespace",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "count by (namespace) (kube_pod_info)", "legendFormat": "{{namespace}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Cluster Memory Working Set (bytes)",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "fieldConfig": {"defaults": {"unit": "bytes"}},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "expr": "sum(container_memory_working_set_bytes{container!=\"\"})", "legendFormat": "used"}]
+        }
+      ]
+    }

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  labels:
+    app: grafana
+spec:
+  # ClusterIP only. Access via `kubectl -n monitoring port-forward svc/grafana
+  # 3000:3000`. No Ingress/LoadBalancer/NodePort: the cluster already has its
+  # one billable LoadBalancer (ingress-nginx); a second forwarding rule costs.
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

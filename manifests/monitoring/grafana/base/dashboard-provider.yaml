@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+data:
+  # Mounted at /etc/grafana/provisioning/dashboards. Points Grafana at the
+  # directory where dashboard JSON is mounted. Unlike the datasource
+  # provisioner, this one WATCHES: updateIntervalSeconds picks up JSON changes
+  # without a pod restart, so a dashboard ConfigMap edit propagates on its own.
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: git
+        orgId: 1
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: false
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false

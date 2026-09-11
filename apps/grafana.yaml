@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+  annotations:
+    # Wave 0: depends on vmsingle existing, but nothing depends on grafana.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Pebintk/lab-git-ops.git
+    targetRevision: main
+    path: manifests/monitoring/grafana/overlays/dev
+  destination:
+    # Dev cluster API endpoint. Changes on cluster rebuild — value read from
+    # `argocd cluster list` / current kube context, matches the other apps.
+    server: https://34.46.105.136
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
