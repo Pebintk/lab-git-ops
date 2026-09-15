@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres
+  namespace: argocd
+  annotations:
+    # After external-secrets (-10) so the ClusterSecretStore/CRDs exist and the
+    # ExternalSecret can sync; before workloads (0) so the DB is up first.
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Pebintk/lab-git-ops.git
+    targetRevision: main
+    path: manifests/data/postgres/overlays/dev
+  destination:
+    # Dev cluster API endpoint. Changes on cluster rebuild — matches the other
+    # apps' current value.
+    server: https://34.46.105.136
+    namespace: data
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+  # NOTE: the StatefulSet's PVC (data-postgres-0) is created by the StatefulSet
+  # controller, not by ArgoCD, so prune never touches it — deleting this app
+  # leaves the PVC and its GCP disk. Cleanup is manual.

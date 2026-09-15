@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter
+  labels:
+    app: postgres-exporter
+spec:
+  # Separate Deployment, not a sidecar: the exporter can be restarted (or crash)
+  # without bouncing the database.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-exporter
+  template:
+    metadata:
+      labels:
+        app: postgres-exporter
+      # Annotations on the POD TEMPLATE, not the Deployment metadata — the
+      # kubernetes-pods scrape job discovers pods, not Deployments.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+    spec:
+      containers:
+        - name: exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+          ports:
+            # MUST be declared as 9187 to match prometheus.io/port. The vmagent
+            # kubernetes-pods job has a keepequal rule that keeps only the target
+            # whose container port equals the annotation; an undeclared or
+            # mismatched port would be filtered out and never scraped.
+            - name: metrics
+              containerPort: 9187
+          env:
+            # Split DSN form so the password stays isolated in a secretKeyRef
+            # rather than baked into a composed connection string in the manifest.
+            - name: DATA_SOURCE_URI
+              value: "postgres-rw:5432/kamis_template?sslmode=disable"
+            - name: DATA_SOURCE_USER
+              value: kamis
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: postgres
+                  key: password
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter
+  labels:
+    app: postgres-exporter
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres-exporter
+  ports:
+    - name: metrics
+      port: 9187
+      targetPort: metrics

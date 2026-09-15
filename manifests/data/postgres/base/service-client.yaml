@@ -1,0 +1,23 @@
+# Normal ClusterIP Service for clients that just want "the database" — KAMIS
+# connection strings target this: postgres-rw.data.svc.cluster.local:5432.
+#
+# NAMING NOTE: the brief asked for this client Service to also be named
+# `postgres`, but that name is taken by the headless governing Service (required
+# for the postgres-0.postgres.data.svc per-pod DNS the acceptance test checks).
+# Two Services cannot share a name in one namespace, so the client Service is
+# `postgres-rw`. With a single primary the headless Service also resolves to the
+# one pod, so either works today; the split matters once there are replicas.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-rw
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

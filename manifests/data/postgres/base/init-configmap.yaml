@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+data:
+  # Mounted at /docker-entrypoint-initdb.d/. The official postgres image runs
+  # every *.sql / *.sh here EXACTLY ONCE — on first initialisation, when the
+  # data directory is empty. On a pod that reattaches to an existing PVC this is
+  # skipped entirely. Editing this file later has NO effect on a database that
+  # already exists; you must run the SQL by hand (or reinitialise the volume).
+  # This is the single most confusing property of the image.
+  #
+  # kamis_template is created by POSTGRES_DB (env) before these scripts run, and
+  # the `kamis` role by POSTGRES_USER, so this file creates the other six only.
+  # One shared owner `kamis`; per-database users would mean seven Secret Manager
+  # entries and seven IAM bindings — not worth it at this stage.
+  init.sql: |
+    CREATE DATABASE kamis_asset    OWNER kamis;
+    CREATE DATABASE kamis_finance  OWNER kamis;
+    CREATE DATABASE kamis_profile  OWNER kamis;
+    CREATE DATABASE kamis_project  OWNER kamis;
+    CREATE DATABASE kamis_purchase OWNER kamis;
+    CREATE DATABASE kamis_resource OWNER kamis;

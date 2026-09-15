@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  # Must match the headless Service name, or the pods get no stable network id.
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgres
+          image: postgres:17.6-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: kamis
+            - name: POSTGRES_DB
+              value: kamis_template
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres
+                  key: password
+            # PGDATA is a SUBDIRECTORY of the mount, not the mount root. A fresh
+            # pd-balanced PVC is ext4 with a lost+found directory at its root, and
+            # the official image refuses to initdb into a non-empty directory —
+            # it fails with "directory exists but is not empty". Pointing PGDATA
+            # one level down sidesteps it. Well-known, confusing, do not remove.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "kamis", "-d", "kamis_template"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "kamis", "-d", "kamis_template"]
+            # Generous first-boot allowance: initialisation runs six extra
+            # CREATE DATABASE statements and is much slower than a normal start.
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+      volumes:
+        - name: init
+          configMap:
+            name: postgres-init
+  # PVC created from this template by the StatefulSet CONTROLLER, not by ArgoCD.
+  # ArgoCD neither manages nor prunes it, so Prune=false is neither needed nor
+  # possible here — unlike vmsingle's standalone PVC. Consequence: deleting this
+  # StatefulSet leaves the PVC (and its GCP disk) behind. Cleanup is MANUAL:
+  #   kubectl -n data delete pvc data-postgres-0
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard-rwo
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,0 +1,17 @@
+# Headless (clusterIP: None) governing Service for the StatefulSet. This is what
+# gives stable per-pod DNS: postgres-0.postgres.data.svc.cluster.local. The
+# StatefulSet's serviceName MUST match this name or the pods get no stable DNS.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
