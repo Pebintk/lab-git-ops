@@ -14,22 +14,22 @@ namespace: kamis
 namePrefix: asset-
 
 resources:
-  - ../../../base
+- ../../../base
 
 # Replaces the base's placeholder `app: app` on the Deployment selector, the pod
 # template labels and the Service selector in one place. All three must agree or
 # the Service selects nothing, and includeSelectors is what keeps them in step.
 labels:
-  - pairs:
-      app: asset
-    includeSelectors: true
-    includeTemplates: true
+- includeSelectors: true
+  includeTemplates: true
+  pairs:
+    app: asset
 
-images:
-  - name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
-    newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-asset
     # Placeholder; becomes the built commit SHA.
-    newTag: dev
+images:
+- name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
+  newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-asset
+  newTag: a65c4e1
 
 patches:
-  - path: patch.yaml
+- path: patch.yaml
