@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kamis-services
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  generators:
+    - list:
+        elements:
+          - service: asset
+            namespace: kamis
+          - service: finance
+            namespace: kamis
+          - service: profile
+            namespace: kamis-profile
+          - service: project
+            namespace: kamis
+          - service: purchase
+            namespace: kamis
+          - service: resource
+            namespace: kamis
+  template:
+    metadata:
+      name: 'kamis-{{service}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/Pebintk/lab-git-ops.git
+        targetRevision: main
+        path: 'manifests/kamis/overlays/dev/{{service}}'
+      destination:
+        server: https://34.46.105.136
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
