@@ -14,18 +14,18 @@ namespace: kamis-profile
 namePrefix: profile-
 
 resources:
-  - ../../../base
+- ../../../base
 
 labels:
-  - pairs:
-      app: profile
-    includeSelectors: true
-    includeTemplates: true
+- includeSelectors: true
+  includeTemplates: true
+  pairs:
+    app: profile
 
 images:
-  - name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
-    newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-profile
-    newTag: dev
+- name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
+  newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-profile
+  newTag: a65c4e1
 
 patches:
-  - path: patch.yaml
+- path: patch.yaml
