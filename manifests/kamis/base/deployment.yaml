@@ -1,0 +1,159 @@
+# One copy of the workload, parameterised. Everything that differs between the
+# six services — name, port, database, peer URLs, and whether the private key is
+# mounted — is set by the overlay, not here.
+#
+# The image name has no tag. The overlays set both the per-service repository
+# (`kamis-asset`, `kamis-profile`, ...) and the tag, because the tag is release
+# state — a commit SHA from the build — and does not belong in a base that six
+# services share.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  # One replica per service. Six services on a Spot pool that autoscales to 3
+  # nodes is enough redundancy at this stage, and a second replica would double
+  # the memory the dashboards are watching without proving anything new.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+      annotations:
+        # The vmagent pod-discovery job keeps a target only when this annotation
+        # is "true", then keeps only the container port that equals the port
+        # below (`keepequal` in manifests/monitoring/victoria-metrics/base/
+        # scrape-config.yaml). Both values are overridden per service by the
+        # overlay, and they must stay equal to each other — if they drift, the
+        # pod disappears from the scrape silently rather than erroring.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      serviceAccountName: app
+      containers:
+        - name: app
+          image: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
+          ports:
+            - name: http
+              containerPort: 8080
+          # Service-specific settings — PORT, FRONTEND_URL, the peer-service
+          # URLs, FILE_UPLOAD_DIR — come from this ConfigMap, which the overlay
+          # supplies under a per-service name. Pulling them in with envFrom
+          # instead of listing them below is what keeps the `env` block
+          # untouchable by any overlay patch. See the ordering note in `env`.
+          envFrom:
+            - configMapRef:
+                name: config
+          env:
+            # ORDER IS LOAD-BEARING. Kubernetes expands $(VAR) only against
+            # variables already defined EARLIER IN THIS LIST, so POSTGRES_PASSWORD
+            # and POSTGRES_DB_NAME must precede DATABASE_URL and nothing may be
+            # inserted between them.
+            #
+            # This is why no overlay patch names `env`. A strategic-merge patch
+            # that touches this list re-emits the entries it touched ahead of the
+            # ones it did not, which silently moved DATABASE_URL above
+            # POSTGRES_PASSWORD and left the literal text `$(POSTGRES_PASSWORD)`
+            # in the DSN. Rendering the overlay is what caught it. If you ever do
+            # need to patch `env`, move this block into the patch with the order
+            # preserved, or drop the $(VAR) form for a value composed by ESO.
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres
+                  key: password
+
+            # The one part of the DSN that differs per service, supplied by the
+            # same ConfigMap the overlay owns.
+            - name: POSTGRES_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: config
+                  key: postgres-database
+
+            - name: DATABASE_URL
+              value: postgres://kamis:$(POSTGRES_PASSWORD)@postgres-rw.data.svc.cluster.local:5432/$(POSTGRES_DB_NAME)?sslmode=disable
+
+            # Plural form, from config.go's publicKeys(): a comma-separated list,
+            # current key first. Set now rather than later because it costs
+            # nothing today and it is what makes a key rotation non-atomic — add
+            # the new key to every service, redeploy profile signing with it, and
+            # drop the old one once the longest-lived token has expired. The
+            # singular JWT_PUBLIC_KEY still works but leaves no room for that.
+            #
+            # This Secret is created by the ExternalSecret in
+            # manifests/kamis/secrets/, not by Git. Until it syncs the pod waits
+            # in CreateContainerConfigError — expected on a fresh cluster.
+            - name: JWT_PUBLIC_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: kamis-jwt-public
+                  key: public-key
+
+            # The issuing half of the keypair. Only profile has it, and only
+            # profile's namespace contains the Secret it names — every other
+            # service would fail to start on a missing secretKeyRef, which is why
+            # this one is `optional`.
+            #
+            # Having it in the shared base rather than in profile's overlay is
+            # deliberate: an overlay that adds to `env` makes strategic merge
+            # re-emit the patched entries ahead of the untouched ones, and this
+            # list contains a $(VAR) chain that only expands in declaration
+            # order. `optional: true` costs one line and keeps every overlay out
+            # of `env` for good.
+            #
+            # The consequence to accept: if the private-key Secret fails to sync
+            # in kamis-profile, profile still starts and fails later, at the
+            # first token it tries to issue, rather than at startup. config.go
+            # reads JWT_SECRET_KEY with os.Getenv and does not require it — only
+            # profile's runtime does.
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kamis-jwt-private
+                  key: private-key
+                  optional: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            # Slower than readiness on purpose: /health is served by the HTTP
+            # server, which starts after the database pool is built and the
+            # migrations run, so a slow first start must not be read as a hang
+            # and restarted. Readiness gates traffic; liveness should only ever
+            # fire on a process that is genuinely wedged.
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            # Placeholders. No KAMIS service has ever run here, so these are
+            # copied from lab-app's shape rather than measured. They are set low
+            # enough that six services fit on the current pool, and the point of
+            # the memory-ratio dashboard is to replace them with real numbers
+            # after the first service is deployed. Do not treat them as load
+            # characteristics.
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            # The image is distroless static nonroot, so this is what the image
+            # already does — stated so a future base-image change cannot quietly
+            # widen it.
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL

@@ -1,0 +1,50 @@
+# project: calls profile to resolve the client a project belongs to, resource to
+# price catalogue items, asset to validate vehicles, and finance to record income
+# when a project is paid.
+#
+# Not the container's `env` block; see ../../README.md.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  PORT: "8083"
+  postgres-database: kamis_project
+  # profile is the one peer in the other namespace; see ../../README.md.
+  PROFILE_URL: http://profile-app.kamis-profile.svc.cluster.local:8080/api
+  RESOURCE_URL: http://resource-app.kamis.svc.cluster.local:8085/api
+  ASSET_URL: http://asset-app.kamis.svc.cluster.local:8081/api
+  FINANCE_URL: http://finance-app.kamis.svc.cluster.local:8082/api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  template:
+    metadata:
+      annotations:
+        # Must equal the containerPort below, or vmagent drops the target.
+        prometheus.io/port: "8083"
+    spec:
+      containers:
+        - name: app
+          ports:
+            # Replaces the list rather than merging into it: container ports
+            # merge on containerPort, so without this the base's 8080 would stay
+            # and the pod would advertise a port nothing listens on.
+            - $patch: replace
+            - name: http
+              containerPort: 8083
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  ports:
+    - $patch: replace
+    - name: http
+      port: 8083
+      targetPort: http

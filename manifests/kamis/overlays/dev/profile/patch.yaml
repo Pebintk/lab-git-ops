@@ -1,0 +1,58 @@
+# profile: the issuer. It signs tokens and calls four services to resolve the
+# clients and suppliers it owns — the widest set of peers of any service here.
+#
+# Its private key is NOT in this file and is not in this namespace's manifests
+# either: it arrives as the Secret kamis-jwt-private, created by the
+# ExternalSecret in ../../../secrets/, and reaches the pod through the base
+# deployment's JWT_SECRET_KEY entry. There is nothing to mount here.
+#
+# Not the container's `env` block; see ../../README.md.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  PORT: "8080"
+  postgres-database: kamis_profile
+  # All four live in the `kamis` namespace — profile is the one on the far side
+  # of the boundary, so every one of its peer URLs crosses it.
+  # RESOURCE_URL and ASSET_URL are for pricing and vehicle checks;
+  # PROJECT_URL and PURCHASE_URL resolve the clients and suppliers profile owns.
+  PROJECT_URL: http://project-app.kamis.svc.cluster.local:8083/api
+  RESOURCE_URL: http://resource-app.kamis.svc.cluster.local:8085/api
+  ASSET_URL: http://asset-app.kamis.svc.cluster.local:8081/api
+  PURCHASE_URL: http://purchase-app.kamis.svc.cluster.local:8084/api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  template:
+    metadata:
+      annotations:
+        # Must equal the containerPort below, or vmagent drops the target.
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+        - name: app
+          ports:
+            # Replaces the list rather than merging into it. Here the value
+            # happens to match the base's 8080, but the explicit replace is kept
+            # so all six overlays are shaped the same way — a reader comparing
+            # them should not have to work out why one is missing it.
+            - $patch: replace
+            - name: http
+              containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  ports:
+    - $patch: replace
+    - name: http
+      port: 8080
+      targetPort: http

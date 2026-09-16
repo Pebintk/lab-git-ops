@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# See ../../README.md. `env` is off-limits to patch.yaml.
+#
+# The namespace is the isolation from the other five services: a Secret is
+# namespace-scoped, not pod-scoped, so putting profile in `kamis` would let every
+# pod there mount kamis-jwt-private with a volume. Nothing in this file grants
+# profile access to the private key — the ExternalSecret in ../../../secrets/
+# puts it in this namespace, and the base deployment reads it as JWT_SECRET_KEY
+# through an `optional` secretKeyRef.
+namespace: kamis-profile
+
+namePrefix: profile-
+
+resources:
+  - ../../../base
+
+labels:
+  - pairs:
+      app: profile
+    includeSelectors: true
+    includeTemplates: true
+
+images:
+  - name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
+    newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-profile
+    newTag: dev
+
+patches:
+  - path: patch.yaml

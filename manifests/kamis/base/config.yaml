@@ -1,0 +1,31 @@
+# The service's own settings, pulled into the pod with envFrom. Deliberately NOT
+# part of the container's `env` block: anything listed there is subject to
+# strategic-merge reordering by an overlay patch, and the KAMIS services use
+# $(VAR) references between env entries, which only expand in declaration order.
+# Keeping the per-service settings in a ConfigMap means no overlay ever has to
+# touch `env`.
+#
+# `postgres-database` is intentionally absent, and named that way rather than
+# `database` for a dull but real reason: everything in this ConfigMap is injected
+# with envFrom, so the key becomes an environment variable in the container. A key
+# called `database` would arrive as an env var named `database`, which no KAMIS
+# service reads and which sits one line away from `DATABASE_URL` in a process
+# listing. The prefix says "consumed by configMapKeyRef as POSTGRES_DB_NAME, not
+# by the service".
+#
+# Every overlay must supply it. It is the only value that is genuinely
+# per-service and has no sensible default, and a missing key makes the container
+# fail with CreateContainerConfigError naming the key — a better failure than
+# quietly connecting to a placeholder database.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  # Overridden by every overlay; 8080 is profile's port and only a default here.
+  PORT: "8080"
+
+  # Only AllowedOrigins() in config.go reads this, and only for CORS. Peer
+  # services never send an Origin header, so an unset or wrong value affects the
+  # browser and nothing else.
+  FRONTEND_URL: http://localhost:5173

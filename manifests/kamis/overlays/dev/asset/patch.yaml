@@ -1,0 +1,65 @@
+# asset: the simplest of the six. One peer — it writes to finance when a
+# maintenance job is booked — and a photo store that has nowhere durable to write
+# yet.
+#
+# Three targets, none of them the container's `env` block. Read the ordering note
+# in base/deployment.yaml before adding one.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  PORT: "8081"
+  postgres-database: kamis_asset
+  # Unset would disable the call: it fails, is logged, and the maintenance record
+  # stays the source of truth. Set so the failure would be a real one worth
+  # seeing.
+  FINANCE_URL: http://finance-app.kamis.svc.cluster.local:8082/api
+  # Uploads. GCS_BUCKET stays unset — asset has no Google identity yet (see the
+  # ServiceAccount in the base), so objects go to disk instead. The path points
+  # at the emptyDir below, not at the container filesystem: the process runs as
+  # uid 65532 and owns no writable path of its own.
+  FILE_UPLOAD_DIR: /var/lib/kamis/uploads
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  template:
+    metadata:
+      annotations:
+        # Must equal the containerPort below, or vmagent drops the target.
+        prometheus.io/port: "8081"
+    spec:
+      containers:
+        - name: app
+          ports:
+            # `$patch: replace` on the list, not a merge: container ports merge
+            # on containerPort, so adding 8081 without it would leave 8080 in
+            # place and give the pod two ports, one of which nothing listens on.
+            - $patch: replace
+            - name: http
+              containerPort: 8081
+          volumeMounts:
+            - name: uploads
+              mountPath: /var/lib/kamis/uploads
+      volumes:
+        # EmptyDir is the honest placeholder: photos do not survive a pod
+        # restart. Surviving is what GCS_BUCKET is for, and that needs Workload
+        # Identity first. Flagged rather than silently accepted.
+        - name: uploads
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  ports:
+    # Same replace-not-merge reasoning as the container port above.
+    - $patch: replace
+    - name: http
+      port: 8081
+      targetPort: http

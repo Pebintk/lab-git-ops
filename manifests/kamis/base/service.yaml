@@ -1,0 +1,19 @@
+# ClusterIP only — no Service is reachable from outside the cluster, and the
+# brief does not ask for one. Peer services call each other through this.
+#
+# targetPort is the container port's *name* (`http`), not a number, so the
+# overlay that changes containerPort does not have to change this file too. The
+# port number here is the service's own listening port and is overridden per
+# service by the overlay; it is only the default.
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  type: ClusterIP
+  selector:
+    app: app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

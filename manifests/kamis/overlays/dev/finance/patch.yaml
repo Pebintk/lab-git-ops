@@ -1,0 +1,47 @@
+# finance: reads activity charts for the operational report out of project and
+# purchase. The ledger itself needs nothing external — project, purchase and
+# asset push entries to it.
+#
+# Not the container's `env` block; see ../../README.md.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  PORT: "8082"
+  postgres-database: kamis_finance
+  PROJECT_URL: http://project-app.kamis.svc.cluster.local:8083/api
+  PURCHASE_URL: http://purchase-app.kamis.svc.cluster.local:8084/api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  template:
+    metadata:
+      annotations:
+        # Must equal the containerPort below, or vmagent drops the target.
+        prometheus.io/port: "8082"
+    spec:
+      containers:
+        - name: app
+          ports:
+            # Replaces the list rather than merging into it: container ports
+            # merge on containerPort, so without this the base's 8080 would stay
+            # and the pod would advertise a port nothing listens on.
+            - $patch: replace
+            - name: http
+              containerPort: 8082
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  ports:
+    - $patch: replace
+    - name: http
+      port: 8082
+      targetPort: http

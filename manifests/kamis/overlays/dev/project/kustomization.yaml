@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# See ../../README.md. `env` is off-limits to patch.yaml.
+namespace: kamis
+
+namePrefix: project-
+
+resources:
+  - ../../../base
+
+labels:
+  - pairs:
+      app: project
+    includeSelectors: true
+    includeTemplates: true
+
+images:
+  - name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
+    newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-project
+    newTag: dev
+
+patches:
+  - path: patch.yaml

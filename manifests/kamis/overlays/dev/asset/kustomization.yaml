@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# The layout, the namespace split, and the reason both this file and patch.yaml
+# must stay away from the container's `env` block are in ../../README.md.
+#
+# namePrefix is what lets one base serve six services: `app` becomes `asset-app`
+# for the Deployment, Service, ServiceAccount and ConfigMap alike, and kustomize
+# rewrites serviceAccountName, configMapRef and configMapKeyRef to match. It also
+# renames everything else the kustomization pulls in — which is why the KAMIS
+# secrets are NOT among them, and live in ../../secrets/ instead.
+namespace: kamis
+
+namePrefix: asset-
+
+resources:
+  - ../../../base
+
+# Replaces the base's placeholder `app: app` on the Deployment selector, the pod
+# template labels and the Service selector in one place. All three must agree or
+# the Service selects nothing, and includeSelectors is what keeps them in step.
+labels:
+  - pairs:
+      app: asset
+    includeSelectors: true
+    includeTemplates: true
+
+images:
+  - name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis
+    newName: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-asset
+    # Placeholder; becomes the built commit SHA.
+    newTag: dev
+
+patches:
+  - path: patch.yaml
