@@ -9,3 +9,9 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+
+# CI (Lab-Kamis-App/KAMIS-FE/Jenkinsfile) bumps newTag to the built commit SHA
+# with `kustomize edit set image`. The placeholder tag below is only a default.
+images:
+  - name: us-central1-docker.pkg.dev/ops-lab-506804/lab-images/kamis-frontend
+    newTag: latest
