@@ -28,4 +28,4 @@ data:
   # Only AllowedOrigins() in config.go reads this, and only for CORS. Peer
   # services never send an Origin header, so an unset or wrong value affects the
   # browser and nothing else.
-  FRONTEND_URL: http://localhost:5173
+  FRONTEND_URL: http://kamis.136-115-250-216.nip.io

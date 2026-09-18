@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Frontend is a standalone SPA — it does not share the Go-service base (no
+# database, no JWT secrets, no service-mesh peer URLs). Everything is declared
+# here rather than patching base/.
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml

@@ -1,0 +1,31 @@
+# Frontend SPA — served from nginx, no backend dependencies.
+#
+# Separate from kamis-services because:
+#   - frontend is not a Go service: no base/, no namePrefix, no ConfigMap.
+#   - The overlay declares resources in two namespaces (kamis for the SPA +
+#     backend Ingresses, kamis-profile for profile's Ingress). The
+#     ApplicationSet template pins a single destination namespace, so it cannot
+#     express this.
+#   - Lifecycle differs: the FE image tag changes on FE commits, not BE commits.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kamis-frontend
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Pebintk/lab-git-ops.git
+    targetRevision: main
+    path: manifests/kamis/overlays/dev/frontend
+  destination:
+    server: https://34.46.105.136
+    namespace: kamis
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

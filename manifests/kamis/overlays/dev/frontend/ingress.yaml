@@ -1,0 +1,118 @@
+# SPA + backend subdomains.
+#
+# All hosts resolve via nip.io wildcard DNS to 136.115.250.216 (the single
+# ingress-nginx LoadBalancer). No extra GCP resources, no API gateway — the
+# browser reaches each backend directly, matching the per-service axios-client
+# pattern in the frontend's apiClient.ts.
+#
+# Ingress and Service must share a namespace. Services in `kamis` are grouped
+# into backend-services; profile is isolated in `kamis-profile` so it gets its
+# own Ingress object targeting profile-app.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+  namespace: kamis
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: kamis.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-app
+                port:
+                  name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend-services
+  namespace: kamis
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: asset.kamis.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: asset-app
+                port:
+                  name: http
+    - host: finance.kamis.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: finance-app
+                port:
+                  name: http
+    - host: project.kamis.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: project-app
+                port:
+                  name: http
+    - host: purchase.kamis.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: purchase-app
+                port:
+                  name: http
+    - host: resource.kamis.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: resource-app
+                port:
+                  name: http
+---
+# profile lives in kamis-profile (the JWT isolation boundary). Ingress must
+# match the Service's namespace. Declared here rather than in profile's overlay
+# so the overlay's `namePrefix: profile-` does not rewrite the name twice.
+#
+# Serves BOTH VITE_API_PROFILE_URL and VITE_API_AUTH_URL.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: profile-ingress
+  namespace: kamis-profile
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: profile.kamis.136-115-250-216.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: profile-app
+                port:
+                  name: http
